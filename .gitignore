@@ -1,0 +1,10 @@
+.DS_Store
+.env
+poetry.lock
+db
+books
+distilbert_base_uncased_model/config.json
+distilbert_base_uncased_model/model.safetensors
+distilbert_base_uncased_tokenizer/special_tokens_map.json
+distilbert_base_uncased_tokenizer/tokenizer_config.json
+distilbert_base_uncased_tokenizer/vocab.txt
