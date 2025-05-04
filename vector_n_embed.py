@@ -5,12 +5,13 @@ from langchain.docstore.document import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 # from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
+from langchain_chroma import Chroma
 
 # Define the directory containing the text files and the persistent directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 books_dir = os.path.join(current_dir, "books")
 db_dir = os.path.join(current_dir, "db")
-db_name = "hugging_face_with_metadata"
+db_name = "hugging_face_chroma_with_metadata"
 
 print(f"Books directory: {books_dir}")
 print(f"DB directory: {db_dir}")
@@ -44,10 +45,10 @@ def load_csvs_to_documents(csv_directory):
             # Convert rows to Document objects
             for _, row in df.iterrows():
                 doc = Document(
-                    page_content=str(row["Question"]),  # Embed the question
+                    page_content=str(row["Answer"]),  # Embed the answer
                     metadata={
                         "index": str(row["ID"]),  # Ensure ID is a string
-                        "answer": str(row["Answer"]),
+                        "question": str(row["Question"]),
                         "category": str(row.get("Category", "")),  # Handle optional columns
                         "source_file": os.path.basename(csv_file)  # Track source file
                     }
@@ -64,8 +65,7 @@ def load_csvs_to_documents(csv_directory):
 
 # Function to create and persist vector store
 def create_vector_store(docs, store_name, embeddings):
-    persistent_db = os.path.join(db_dir, store_name)
-    if not os.path.exists(persistent_db):
+    if not os.path.exists(store_name):
         print(f"\n--- Creating vector store {store_name} ---")
 
         # Create vector store with FAISS
@@ -75,12 +75,32 @@ def create_vector_store(docs, store_name, embeddings):
         )
 
         # Save vector store to disk
-        vector_store.save_local(persistent_db)
+        vector_store.save_local(store_name)
 
         print(f"--- Finished creating vector store {store_name} ---")
     else:
         print(
             f"Vector store {store_name} already exists. No need to initialize.")
+        
+def create_chroma_vector_store(docs, store_name, embeddings):
+    """
+    Create and save a Chroma vector store from multiple Q&A CSV files.
+    """
+    try:
+        # Create Chroma vector store
+        vector_store = Chroma.from_documents(
+            documents=docs,
+            embedding=embeddings,
+            persist_directory=store_name
+        )
+        
+        # Persist the vector store
+        # vector_store.persist()
+        print(f"Chroma vector store saved to {store_name}")
+        # return vector_store
+    except Exception as e:
+        print(f"Error creating Chroma vector store: {e}")
+        return None       
 
 def main():
     # Check if the Chroma vector store already exists， if not, create it
@@ -107,7 +127,9 @@ def main():
         print("\n--- Finished creating embeddings with Hugging Face.---")
         
         # Step 3: Create the vector store and persist it
-        create_vector_store(documents, db_name, embeddings)
+        # Use FAISS or Chroma based on your preference
+        # create_vector_store(documents, persistent_directory, embeddings)
+        create_chroma_vector_store(documents, persistent_directory, embeddings)
 
     else:
         print("Vector store already exists. No need to initialize.")
