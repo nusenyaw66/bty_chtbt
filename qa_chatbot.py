@@ -28,6 +28,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Initialize OpenAI client
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
+chat_history = []
+
 # Initialize HuggingFace embeddings
 embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
@@ -42,29 +44,71 @@ tokenizer = tiktoken.encoding_for_model("gpt-4o")
 def count_tokens(text):
     return len(tokenizer.encode(text))
 
+# Function to truncate content to fit token limit
+def truncate_content(content, max_tokens, keep_start=True):
+    tokens = tokenizer.encode(content)
+    if len(tokens) <= max_tokens:
+        return content
+    if keep_start:
+        return tokenizer.decode(tokens[:max_tokens])
+    return tokenizer.decode(tokens[-max_tokens:])
+
 # Function to retrieve relevant documents
-def retrieve_documents(query, k=2):
+def retrieve_documents(query, k=3):
     results = vector_store.similarity_search(query, k=k)
     return results
 
-# Function to generate QA prompt
+# Function to generate QA prompt with chat history
 def generate_qa_prompt(query, retrieved_docs):
-    context = "\n".join([f"Q: {doc.metadata['question']}\nA: {doc.page_content}" for doc in retrieved_docs])
-    prompt = f"""你是一個繁體中文問答聊天機器人。請根據以下上下文或你的知識回答使用者的問題。如果上下文無相關資訊，根據你的知識提供答案；若仍不知道，說不知道。
-
+    # Base prompt template without content
+    base_prompt = f"""你是一個繁體中文問答聊天機器人。請根據以下上下文、對話歷史或你的知識回答使用者的問題。如果上下文和歷史無相關資訊，根據你的知識提供答案；若仍不知道，說不知道。
 
 Context:
-{context}
+{{context}}
+
+Chat History:
+{{history_context}}
 
 User Question: {query}
 
 Answer: """
+    
+    # Format retrieved documents
+    context = "\n".join([f"Q: {doc.metadata['question']}\nA: {doc.page_content}" for doc in retrieved_docs])
+    
+    # Format recent chat history (limit to last 3 interactions)
+    history_context = ""
+    for past_query, past_answer in chat_history[-3:]:
+        history_context += f"Previous Q: {past_query}\nPrevious A: {past_answer}\n"
+    
+    # Calculate token counts
+    base_tokens = count_tokens(base_prompt.format(context="", history_context=""))
+    query_tokens = count_tokens(query)
+    context_tokens = count_tokens(context)
+    history_tokens = count_tokens(history_context)
+    
+    # Target max tokens for content (leaving buffer for base prompt and query)
+    max_content_tokens = 900 - base_tokens - query_tokens
+    
+    # Truncate if necessary
+    if context_tokens + history_tokens > max_content_tokens:
+        # Allocate half to context, half to history
+        target_context_tokens = max_content_tokens // 2
+        target_history_tokens = max_content_tokens - target_context_tokens
+        
+        context = truncate_content(context, target_context_tokens, keep_start=True)
+        history_context = truncate_content(history_context, target_history_tokens, keep_start=False)
+    
+    # Generate final prompt
+    prompt = base_prompt.format(context=context, history_context=history_context)
+    
     prompt_tokens = count_tokens(prompt)
-    ## Debug: Print token count
-    # print(f"Prompt token count: {prompt_tokens}")
+    print(f"QA Prompt token count: {prompt_tokens}")
     if prompt_tokens > 1000:
-        print("Warning: Prompt exceeds 1000 tokens, may cause issues.")
+        print("Warning: Prompt still exceeds 1000 tokens after truncation.")
+    
     return prompt
+
 
 # Function to generate answer using OpenAI API
 def generate_answer(prompt):
@@ -78,11 +122,12 @@ def generate_answer(prompt):
             max_tokens=500,  # Adjust based on desired output length
             temperature=0.9,
         )
-        # Extract the answer
-        answer = response.choices[0].message.content.strip()
+        # Safely extract the answer
+        content = response.choices[0].message.content
+        answer = content.strip() if content is not None else "無法取得回應內容。"
         # # Debug: Print response details
         # print(f"Raw API response: {answer}")
-        # return answer
+        return answer
     except Exception as e:
         print(f"Error generating answer: {e}")
         return "抱歉，無法生成回答，請稍後再試。"
@@ -113,6 +158,10 @@ def qa_chatbot():
         
         # Generate answer
         answer = generate_answer(prompt)
+
+        # Save to chat history
+        chat_history.append((query, answer))
+
         print(f"Query: {query}")
         print(f"Answer: {answer}\n")
 
