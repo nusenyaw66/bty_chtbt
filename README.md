@@ -1,4 +1,7 @@
-bueaty chatbot
+qa_chatbot 
+
+creates vector_db from CSV Q&A file
+qa_chatbot varience for ChatGPT, HuggingFace local and LMStudio local LLM
 
 use poetry to manage environment
 
