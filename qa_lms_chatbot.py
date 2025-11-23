@@ -1,10 +1,10 @@
 import os
+
 from dotenv import load_dotenv
-# import pandas as pd
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-from openai import OpenAI
 import tiktoken
+from openai import OpenAI
 
 # Load environment variables from .env
 load_dotenv()
@@ -14,28 +14,38 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Define the persistent directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
-db_name = "hugging_face_chroma_with_metadata"
+db_name = "hugging_face_FAISS_with_metadata"
 vector_store_path = os.path.join(current_dir, "db", db_name)
+
+# Model configuration for LM Studio
+model_name = "qwen2.5-7b-instruct-mlx"
 
 # Initialize OpenAI client for LM Studio local server
 openai_client = OpenAI(
-    base_url="http://nusenyaw.synology.me:1234/v1",  # LM Studio local server URL
+    base_url="http://10.20.11.199:1234/v1",  # LM Studio local server URL with /v1 endpoint
     api_key="not-needed",  # LM Studio doesn't require an API key
     timeout=60  # Optional: Set a timeout for requests
 )
 
 # Initialize HuggingFace embeddings
-embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
-embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
+embedding_model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+embeddings = HuggingFaceEmbeddings(
+    model_name=embedding_model_name,
+    model_kwargs={'device': 'cpu'},  # Force CPU usage to save memory
+    encode_kwargs={'normalize_embeddings': True}  # Normalize for better performance
+)
 
-# Load the Chroma vector store
-vector_store = Chroma(persist_directory=vector_store_path, embedding_function=embeddings)
-
-# Initialize tiktoken encoder for token counting
-tokenizer = tiktoken.encoding_for_model("gpt-4o")
-
+# Load the FAISS vector store
+vector_store = FAISS.load_local(
+            folder_path=vector_store_path,
+            embeddings=embeddings,
+            allow_dangerous_deserialization=True
+        )
 # Initialize chat history
 chat_history = []
+
+# Initialize tiktoken encoder for token counting (using cl100k_base for general token counting)
+tokenizer = tiktoken.get_encoding("cl100k_base")
 
 # Function to count tokens
 def count_tokens(text):
@@ -110,8 +120,7 @@ Answer: """
 def generate_answer(prompt):
     try:
         response = openai_client.chat.completions.create(
-            # model="mlx-community/llama-3.2-3b-instruct",  # Use Llama 3.2 3B MLX (verify exact identifier in LM Studio)
-            model="hermes-3-llama-3.2-3b",
+            model=model_name,  # Use qwen2.5-7b-instruct-mlx model on LM Studio
             messages=[
                 {"role": "system", "content": "你是您是一位負責回答中文問題的醫美助理。 請使用以下提供的相關內容和對話歷史來回答問題。 如果你不知道答案， 請直接說你不知道。 請在3句話內回答並保持答案簡潔。"},
                 {"role": "user", "content": prompt}
@@ -119,13 +128,36 @@ def generate_answer(prompt):
             max_tokens=500,
             temperature=0.9,
         )
-        # Safely extract the answer
+        
+        # Debug: Print response structure
+        print(f"Response type: {type(response)}")
+        print(f"Response: {response}")
+        
+        # Safely extract the answer with proper None checks
+        if response is None:
+            print("Error: Response is None")
+            return "無法取得回應內容。回應為空。"
+        
+        if not hasattr(response, 'choices') or response.choices is None:
+            print("Error: Response has no 'choices' attribute or it is None")
+            return "無法取得回應內容。回應結構錯誤。"
+        
+        if len(response.choices) == 0:
+            print("Error: Response.choices is empty")
+            return "無法取得回應內容。沒有可用的選擇。"
+        
+        if not hasattr(response.choices[0], 'message') or response.choices[0].message is None:
+            print("Error: Response.choices[0] has no 'message' attribute or it is None")
+            return "無法取得回應內容。訊息結構錯誤。"
+        
         content = response.choices[0].message.content
         answer = content.strip() if content is not None else "無法取得回應內容。"
         print(f"Raw API response: {answer}")
         return answer
     except Exception as e:
         print(f"Error generating answer: {e}")
+        import traceback
+        traceback.print_exc()
         return "抱歉，無法生成回答，請稍後再試。"
 
 # Function for continuous chatbot interaction

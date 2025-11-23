@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "bty-chtbt"
-version = "0.1.0"
+name = "bty_chtbt"
+version = "0.1"
 description = ""
 authors = ["nusenyaw66 <nusenyaw@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13"
 python-dotenv = "^1.0.1"
 langchain-core = ">=0.2.0,<0.4.0"
 langchain = "^0.3.0"
@@ -19,8 +19,14 @@ faiss-cpu = "^1.11.0"
 pandas = "^2.2.0"
 pinecone = "^6.0"
 openai = "^1.7.0"
+anthropic = "^0.40.0"
 tiktoken = "^0.9.0"
 flask = "^3.1.0"
+flask-cors = "^5.0.0"
+gunicorn = "^21.2.0"
+psutil = "^5.9.0"
+line-bot-sdk = "3.17.0"
+google-cloud-storage = "3.2.0"
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md
