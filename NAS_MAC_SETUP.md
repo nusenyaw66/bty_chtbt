@@ -5,7 +5,7 @@ This guide explains how to run the Flask API backend on your Mac and serve the H
 ## Architecture
 
 ```
-Internet → ngrok (Mac: 10.20.11.121) → Flask API (Mac: 10.20.11.121:8888)
+Internet → ngrok (Mac: 10.20.11.199) → Flask API (Mac: 10.20.11.199:8888)
                                          ↑
 HTML Page (NAS: 10.20.11.34) ──────────┘
 ```
@@ -14,18 +14,18 @@ HTML Page (NAS: 10.20.11.34) ──────────┘
 
 ### Step 1: Run Flask API on Mac
 
-On your Mac (10.20.11.121), start the Flask API server:
+On your Mac (10.20.11.199), start the Flask API server:
 
 ```bash
 cd /Users/wsun/Programming/bty_chtbt
 python qa_lms_api.py
 ```
 
-The API will be available at `http://10.20.11.121:8888`
+The API will be available at `http://10.20.11.199:8888`
 
 Verify it's running:
 ```bash
-curl http://10.20.11.121:8888/api/health
+curl http://10.20.11.199:8888/api/health
 ```
 
 ### Step 2: Setup ngrok on Mac (Optional - for internet access)
@@ -65,7 +65,7 @@ Edit `chat_standalone.html` on your NAS and update the API endpoint:
 
 **For local network access (Mac IP):**
 ```javascript
-const API_BASE_URL = 'http://10.20.11.121:8888';
+const API_BASE_URL = 'http://10.20.11.199:8888';
 ```
 
 **For internet access via ngrok:**
@@ -106,9 +106,9 @@ The HTML page will automatically make API calls to your Mac Flask backend!
 
 | Component | Location | URL/Address |
 |-----------|----------|-------------|
-| Flask API | Mac (10.20.11.121) | `http://10.20.11.121:8888` |
+| Flask API | Mac (10.20.11.199) | `http://10.20.11.199:8888` |
 | HTML Page | NAS (10.20.11.34) | `http://10.20.11.34/chat_standalone.html` |
-| ngrok Tunnel | Mac (10.20.11.121) | `https://your-url.ngrok-free.app` (optional) |
+| ngrok Tunnel | Mac (10.20.11.199) | `https://your-url.ngrok-free.app` (optional) |
 
 ## Troubleshooting
 
@@ -121,7 +121,7 @@ If you see CORS errors in the browser console, make sure:
 ### Connection Refused
 
 If the HTML can't connect to the API:
-1. Check Flask API is running on Mac: `curl http://10.20.11.121:8888/api/health`
+1. Check Flask API is running on Mac: `curl http://10.20.11.199:8888/api/health`
 2. Check firewall settings on Mac (port 8888 should be open)
 3. Verify API URL in HTML matches your Mac's IP
 
@@ -137,7 +137,7 @@ If using ngrok and it's not working:
 Test if HTML can reach Flask API:
 ```bash
 # From NAS or any device on network
-curl http://10.20.11.121:8888/api/health
+curl http://10.20.11.199:8888/api/health
 ```
 
 Should return:

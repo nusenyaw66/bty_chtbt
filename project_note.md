@@ -69,8 +69,8 @@ Creating a Retrieval-Augmented Generation (RAG) enabled chatbot for LINE Messeng
 use python 3.13 (default)
 $ poetry env use 3.13
 
-Poetry (version 1.8.4)
-poetry shell
+Poetry (version 2.2.1)
+poetry env activate
 deactivate
 poetry lock --no-update
 poetry install --no-root

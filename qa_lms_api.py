@@ -106,8 +106,15 @@ Answer: """
 @app.route('/api/chat', methods=['POST', 'OPTIONS'])
 def chat():
     """API endpoint for chat messages."""
+    # Handle CORS preflight requests
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
         query = data.get('message', '').strip()
         
         if not query:
@@ -145,6 +152,10 @@ def chat():
 @app.route('/api/clear', methods=['POST', 'OPTIONS'])
 def clear_history():
     """Clear chat history for current session."""
+    # Handle CORS preflight requests
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
         session_id = session.get('session_id')
         if session_id and session_id in chat_histories:
@@ -158,6 +169,7 @@ def clear_history():
 def health_check():
     """Health check endpoint."""
     try:
+        logger.info(f"Health check requested from {request.remote_addr}")
         return jsonify({
             'status': 'OK',
             'model': model_name,
@@ -181,7 +193,7 @@ def root():
     })
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8888))
+    port = int(os.environ.get('PORT', 5566))
     host = os.environ.get('HOST', '0.0.0.0')
     logger.info(f"Starting Flask API server on {host}:{port}")
     logger.info(f"API will be accessible at http://{host}:{port}")

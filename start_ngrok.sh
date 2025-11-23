@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Ngrok tunnel script for Flask API on Mac
-# Run this script on your Mac (10.20.11.121) to tunnel to Flask API (localhost:8888)
+# Run this script on your Mac (10.20.11.199) to tunnel to Flask API (localhost:8888)
 
 # Flask API configuration (running on this Mac)
 LOCAL_HOST="localhost"
-LOCAL_PORT="8888"
+LOCAL_PORT=""
 
 echo "========================================="
 echo "Starting ngrok tunnel to Flask API"
